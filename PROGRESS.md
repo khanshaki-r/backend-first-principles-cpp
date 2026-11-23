@@ -2,12 +2,12 @@
 
 Session 0 (site skeleton) done: 2026-11-23
 
-Next command: `Read COURSE_PROMPT.md and PROGRESS.md. Build Day 1 and Day 2. Then commit and push.`
+Next command: `Read COURSE_PROMPT.md and PROGRESS.md. Build Day 3 and Day 4. Then commit and push.`
 
 | Day | Topic | Status | Date |
 |----:|-------|--------|------|
-| 1 | Roadmap, mindset, how a request travels | not started | |
-| 2 | What a backend is; minimal TCP server | not started | |
+| 1 | Roadmap, mindset, how a request travels | done | 2026-11-23 |
+| 2 | What a backend is; minimal TCP server | done | 2026-11-23 |
 | 3 | HTTP from the wire up | not started | |
 | 4 | Routing | not started | |
 | 5 | Serialization & deserialization | not started | |

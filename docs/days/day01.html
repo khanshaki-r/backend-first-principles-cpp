@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 1 · Roadmap and the journey of a request</title>
+<meta name="description" content="What 'first principles' means for backend engineering, the mindset of a backend engineer, and the full journey of one HTTP request from a browser to your process and back.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../">Backend From First Principles · C/C++</a>
+    <nav>
+      <a href="../#syllabus">Syllabus</a>
+      <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle theme">Theme</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>Day 1: Roadmap, mindset, and the journey of one request</h1>
+  <p class="day-meta">
+    <span class="tag">Videos 1 &amp; 2</span>
+    <span class="tag">~30 min read</span>
+    Source lessons: <a href="https://youtu.be/0Rwb4Xmlcwc">1. Roadmap for backend from first principles</a> ·
+    <a href="https://www.youtube.com/playlist?list=PLui3EUkuMTPgZcV0QhQrOcwMPcBCcd_Q1">2. Walk the path of a true backend engineer</a>
+  </p>
+
+  <!-- 1 -->
+  <h2>What Sriniously teaches in these videos</h2>
+  <ul>
+    <li>Backend engineering is not "learn Express/Django/Spring". Frameworks are the last layer, not the first. The course walks the stack from the bottom: HTTP, routing, serialization, auth, validation, architecture, databases, caching, queues, search, errors, config, observability, shutdown, security, scaling, concurrency, storage, real-time, testing, 12-factor, OpenAPI, webhooks, DevOps.</li>
+    <li>"First principles" means: for every tool, know the problem it solves, what it does underneath, and what you would do without it. Then any framework in any language becomes a thin skin over things you already understand.</li>
+    <li>The mindset of a real backend engineer: read the specification, not the blog post. Build the thing once by hand before you use the library. Ask "what happens on the wire / in the kernel / in memory" until you hit something you can't go below.</li>
+    <li>Language is a detail. He uses JavaScript/TypeScript; we use C and C++ precisely because they hide nothing. Every syscall, every byte, every allocation is in front of you.</li>
+    <li>The path is long on purpose. Each topic builds on the previous one. Skipping ahead leaves holes that show up at 3 a.m. during an outage.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 class="q-why">The problem before "first principles"</h2>
+  <p>Most people learn backend development backwards. They start with a framework tutorial. On day one they have a working server, a database, and a login page. On day thirty they have a product. On day ninety the product is slow under load and nobody on the team can say why.</p>
+  <p>What happened is that the framework did a hundred things for them, silently. It parsed the HTTP request, decoded the URL, matched a route, parsed JSON, checked a session cookie, opened a database connection from a pool, serialized a response, set headers, and closed the socket. They never saw any of it. So when one of those hundred things goes wrong, they are blind. They can only google the error message and try the first answer.</p>
+  <p>This is the problem first principles solves. Not "know everything", but <strong>know what is underneath everything you use</strong>. When the framework fails, you can reason one layer down. When the layer below that fails, one more. You stop at the kernel, and the kernel is very well documented.</p>
+  <div class="note">
+    <p><strong>A concrete example.</strong> A request to <code>/api/orders</code> takes 4 seconds. The framework engineer sees "slow endpoint". The first-principles engineer asks, in order: Is it DNS? TCP connect? TLS handshake? Server accept queue full? Request parsing? Route handler? Database query? Database connection pool exhausted? Serialization of a huge response? Slow client reading the response? Each question is a layer, and each layer has a tool to measure it. By the end of this course, you will have that list in your head and know how each layer works.</p>
+  </div>
+
+  <!-- 3 -->
+  <h2 class="q-when">When you need this mindset, and when you don't</h2>
+  <p>You do <em>not</em> need to hand-write an HTTP parser to ship a weekend project. Frameworks exist because the problems are solved; reinventing them in production is usually a mistake. Use the library. Use the framework.</p>
+  <p>You <em>do</em> need to have hand-written one once, so that you know:</p>
+  <ul>
+    <li>what the library is doing for you, and therefore what it can get wrong;</li>
+    <li>what the limits are (why a 2 GB upload breaks it, why 10 000 idle connections exhaust it);</li>
+    <li>how to read its source code or its logs when it misbehaves;</li>
+    <li>how to pick between two libraries, because you know the trade-off they each made.</li>
+  </ul>
+  <p>The rule of thumb for this course: <strong>build it by hand once to understand it, then use the real tool in production.</strong> Every "See it in C" section is the "once". Every "How real tools do it" section is the "then".</p>
+  <p>When is it over-engineering? If you are writing your own HTTP server for a company product in 2026 without a very specific reason (embedded device, extreme performance, no dependency policy), that is over-engineering. The understanding is the goal, not the artifact.</p>
+
+  <!-- 4 -->
+  <h2 class="q-how">How a request actually travels</h2>
+  <p>This is the spine of the whole course. Every later day zooms into one box of this diagram. Read it slowly; you will come back to it.</p>
+  <p>You type <code>http://example.com/orders</code> in a browser and press Enter. Here is what happens, bottom-up, with the kernel calls your backend process will make or receive in <code>monospace</code>.</p>
+
+<pre class="diagram">
+ BROWSER (client process)                        YOUR BACKEND (server process)
+ ────────────────────────                        ────────────────────────────
+ 1. URL parse: scheme=http host=example.com
+    port=80 path=/orders
+ 2. DNS: "example.com" -> 93.184.216.34
+    (getaddrinfo: /etc/hosts, then UDP :53
+     to resolver, cached by TTL)
+ 3. TCP connect  ── SYN ──────────────────────>   kernel: listening socket on :80
+                 <─ SYN+ACK ──────────────────    (process did socket/bind/listen earlier)
+                 ── ACK ──────────────────────>   kernel: connection goes into the
+                                                  ACCEPT QUEUE
+ 4. send() bytes:                                 process: accept() returns a NEW fd
+    "GET /orders HTTP/1.1\r\n                     process: recv(fd, buf, ...) -> those bytes
+     Host: example.com\r\n
+     \r\n"                                        5. parse request line + headers
+                                                  6. route "/orders" -> handler
+                                                  7. handler: auth, validate, DB query
+                                                     (another TCP socket to Postgres)
+                                                  8. serialize result to JSON
+ 9. recv() bytes:                                 process: send(fd, "HTTP/1.1 200 OK\r\n
+    status line, headers, body            <────      Content-Type: application/json\r\n
+                                                     Content-Length: 137\r\n\r\n{...}")
+ 10. render / JS consumes JSON                    close(fd)   (or keep-alive: next request)
+</pre>
+
+  <h3>Layer by layer</h3>
+  <p><strong>DNS (Domain Name System).</strong> Humans use names, the network uses numbers. The browser (really, the OS resolver library) asks: what IP address is <code>example.com</code>? It checks a local file first (<code>/etc/hosts</code>), then a local cache, then sends a small UDP packet to a resolver (your router, your ISP, or 1.1.1.1). The answer comes with a TTL (time to live) in seconds, and is cached for that long. From C, this whole dance is one call: <code>getaddrinfo()</code>. Day 1's program uses it.</p>
+  <p><strong>TCP (Transmission Control Protocol).</strong> IP delivers packets with no guarantee of order or arrival. TCP builds a reliable, ordered byte stream on top. Before any data moves, client and server do a three-way handshake: SYN, SYN+ACK, ACK. That costs one full round trip (RTT) before you send a single byte of HTTP. On the server side, the kernel completes this handshake <em>without your process being involved</em>; your process only sees the finished connection when it calls <code>accept()</code>. On the client, it is <code>socket()</code> then <code>connect()</code>.</p>
+  <p><strong>Sockets.</strong> A socket is the kernel object that represents one endpoint of a connection. To your program it is just a file descriptor (an <code>int</code>). You <code>send()</code> bytes into it and <code>recv()</code> bytes out of it. The kernel handles packets, retransmission, ordering, flow control. This is why a backend is "just a process": it reads from an fd and writes to an fd.</p>
+  <p><strong>HTTP (HyperText Transfer Protocol).</strong> HTTP/1.1 is plain text. A request is a request line (<code>GET /orders HTTP/1.1</code>), then header lines (<code>Name: value</code>), then an empty line, then an optional body. A response is a status line (<code>HTTP/1.1 200 OK</code>), headers, empty line, body. Lines end in <code>\r\n</code>. That's it. The entire web runs on this. Day 3 goes deep.</p>
+  <p><strong>Your process.</strong> Everything between <code>recv()</code> and <code>send()</code> is "the backend": parsing, routing, authentication, validation, business logic, talking to a database (which is itself another socket to another process), serializing the answer. Days 3 to 18 are this box.</p>
+  <p><strong>Back out.</strong> The response bytes go into the socket, the kernel splits them into TCP segments, the client's kernel reassembles them, the browser parses the same text format in reverse.</p>
+
+  <h3>Where the time goes</h3>
+  <p>Typical numbers for one request from a laptop to a server in the same country. Rough, but the orders of magnitude matter:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Step</th><th>Typical cost</th><th>Avoidable by</th></tr></thead>
+    <tbody>
+      <tr><td>DNS lookup</td><td>0 ms (cached) to 50 ms</td><td>caching, TTL</td></tr>
+      <tr><td>TCP handshake</td><td>1 RTT, 10 to 100 ms</td><td>keep-alive, connection reuse</td></tr>
+      <tr><td>TLS handshake (https)</td><td>1 to 2 RTT more</td><td>session resumption, HTTP/2, HTTP/3</td></tr>
+      <tr><td>Request parse + route</td><td>microseconds</td><td>nothing needed</td></tr>
+      <tr><td>Database query</td><td>0.1 ms to seconds</td><td>indexes, caching, connection pool</td></tr>
+      <tr><td>Serialize response</td><td>microseconds to ms</td><td>smaller payloads, binary formats</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Notice that network round trips dominate everything except a bad database query. This single table explains why keep-alive, connection pooling, caching, and HTTP/2 exist. You will meet each one later, and each time you can come back to this row.</p>
+
+  <!-- 5 -->
+  <h2>See it in C</h2>
+  <p>This program does steps 1 to 4 and 9 of the diagram by hand: DNS lookup, TCP connect, send a raw HTTP request, print the raw response. No libraries except the C standard library and the POSIX socket API. Run it as <code>./http_get example.com /</code>.</p>
+  <div class="code-head"><span>http_get.c</span><span>C17 · POSIX</span></div>
+  <pre><code class="language-c">// http_get.c — the whole journey of one request, by hand.
+// DNS lookup -> TCP connect -> send HTTP request -> read HTTP response.
+#define _POSIX_C_SOURCE 200112L
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;        /* close */
+#include &lt;netdb.h&gt;         /* getaddrinfo */
+#include &lt;sys/socket.h&gt;    /* socket, connect, send, recv */
+#include &lt;arpa/inet.h&gt;     /* inet_ntop */
+
+int main(int argc, char **argv) {
+    const char *host = argc &gt; 1 ? argv[1] : "example.com";
+    const char *path = argc &gt; 2 ? argv[2] : "/";
+
+    /* 1. DNS: turn a name into addresses.
+       getaddrinfo asks the system resolver, which checks /etc/hosts,
+       then the DNS servers listed in /etc/resolv.conf.  It can return
+       several addresses (IPv4 and IPv6); we get a linked list. */
+    struct addrinfo hints = {0};
+    hints.ai_family   = AF_UNSPEC;    /* IPv4 or IPv6, we don't care   */
+    hints.ai_socktype = SOCK_STREAM;  /* TCP (a stream), not UDP       */
+    struct addrinfo *res = NULL;
+    int rc = getaddrinfo(host, "80", &amp;hints, &amp;res);
+    if (rc != 0) {
+        fprintf(stderr, "DNS failed: %s\n", gai_strerror(rc));
+        return 1;
+    }
+
+    /* 2. TCP: try each address until connect() succeeds.
+       connect() is where the three-way handshake happens.  It blocks
+       until the handshake completes or fails (refused, timeout). */
+    int fd = -1;
+    for (struct addrinfo *p = res; p; p = p-&gt;ai_next) {
+        char ip[INET6_ADDRSTRLEN];
+        void *addr = (p-&gt;ai_family == AF_INET)
+            ? (void *)&amp;((struct sockaddr_in  *)p-&gt;ai_addr)-&gt;sin_addr
+            : (void *)&amp;((struct sockaddr_in6 *)p-&gt;ai_addr)-&gt;sin6_addr;
+        inet_ntop(p-&gt;ai_family, addr, ip, sizeof ip);
+        printf("trying %s ...\n", ip);
+
+        fd = socket(p-&gt;ai_family, p-&gt;ai_socktype, p-&gt;ai_protocol);
+        if (fd &lt; 0) continue;
+        if (connect(fd, p-&gt;ai_addr, p-&gt;ai_addrlen) == 0) break;  /* SYN, SYN+ACK, ACK done */
+        close(fd);
+        fd = -1;
+    }
+    freeaddrinfo(res);  /* the list was malloc'd by the resolver; give it back */
+    if (fd &lt; 0) { perror("connect"); return 1; }
+
+    /* 3. HTTP: it is just text.  Lines end in \r\n; an empty line ends the headers.
+       "Host" is mandatory in HTTP/1.1 because one IP can serve many sites.
+       "Connection: close" asks the server to hang up after one response,
+       which makes "read until EOF" a correct way to find the end. */
+    char req[512];
+    int n = snprintf(req, sizeof req,
+        "GET %s HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "Connection: close\r\n"
+        "\r\n", path, host);
+
+    /* send() may write FEWER bytes than asked (socket buffer full).
+       A loop until everything is out is the only correct way. */
+    size_t sent = 0;
+    while (sent &lt; (size_t)n) {
+        ssize_t w = send(fd, req + sent, (size_t)n - sent, 0);
+        if (w &lt; 0) { perror("send"); close(fd); return 1; }
+        sent += (size_t)w;
+    }
+
+    /* 4. Read the reply until the server closes the connection (recv returns 0).
+       Each recv() returns whatever has arrived so far: maybe 1 byte, maybe 4096.
+       Never assume one recv() == one message.  That assumption is bug #1 in
+       every hand-written network program. */
+    char buf[4096];
+    ssize_t r;
+    while ((r = recv(fd, buf, sizeof buf, 0)) &gt; 0)
+        fwrite(buf, 1, (size_t)r, stdout);
+    if (r &lt; 0) perror("recv");
+
+    close(fd);  /* sends FIN; the kernel finishes the TCP teardown for us */
+    return 0;
+}</code></pre>
+  <p><strong>What to notice.</strong> There are exactly six kernel calls that matter: <code>getaddrinfo</code> (which internally does the UDP DNS exchange), <code>socket</code>, <code>connect</code>, <code>send</code>, <code>recv</code>, <code>close</code>. Everything else is string formatting. When you run it you will see the server's raw response, status line and headers included. That text is what every HTTP library in every language is parsing for you.</p>
+  <p><strong>The two loops are not optional.</strong> The <code>send</code> loop handles partial writes. The <code>recv</code> loop handles partial reads. TCP is a byte stream with no message boundaries, so the kernel is free to hand you data in any chunking it likes. Programs that do a single <code>recv</code> and assume they got "the response" work on localhost and fail in production. Day 3 builds on this when we parse HTTP incrementally.</p>
+
+  <!-- 6 -->
+  <h2>See it in modern C++</h2>
+  <p>The C version has a resource-leak trap on every early return: forget one <code>close(fd)</code> and the descriptor leaks. The <code>addrinfo</code> list has the same problem. C++ fixes this with RAII (Resource Acquisition Is Initialization): the resource is owned by an object, and the object's destructor releases it, on every exit path, including exceptions. The logic is identical; the safety is structural.</p>
+  <div class="code-head"><span>http_get.cpp</span><span>C++20 · POSIX</span></div>
+  <pre><code class="language-cpp">// http_get.cpp — same journey, with every resource owned by an object.
+#include &lt;cstdio&gt;
+#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+#include &lt;netdb.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/socket.h&gt;
+
+// A socket that closes itself.  Move-only: two owners would mean two close() calls.
+class Socket {
+    int fd_ = -1;
+public:
+    Socket() = default;
+    explicit Socket(int fd) : fd_(fd) {}
+    ~Socket() { if (fd_ &gt;= 0) ::close(fd_); }
+
+    Socket(const Socket&amp;)            = delete;
+    Socket&amp; operator=(const Socket&amp;) = delete;
+    Socket(Socket&amp;&amp; o) noexcept : fd_(o.fd_) { o.fd_ = -1; }
+    Socket&amp; operator=(Socket&amp;&amp; o) noexcept {
+        if (this != &amp;o) { if (fd_ &gt;= 0) ::close(fd_); fd_ = o.fd_; o.fd_ = -1; }
+        return *this;
+    }
+
+    int  get()   const { return fd_; }
+    bool valid() const { return fd_ &gt;= 0; }
+};
+
+// getaddrinfo's list, freed automatically by freeaddrinfo.
+using AddrList = std::unique_ptr&lt;addrinfo, decltype(&amp;::freeaddrinfo)&gt;;
+
+std::optional&lt;AddrList&gt; resolve(const std::string&amp; host, const char* port) {
+    addrinfo hints{};
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    addrinfo* raw = nullptr;
+    if (int rc = ::getaddrinfo(host.c_str(), port, &amp;hints, &amp;raw); rc != 0) {
+        std::cerr &lt;&lt; "DNS failed: " &lt;&lt; ::gai_strerror(rc) &lt;&lt; '\n';
+        return std::nullopt;
+    }
+    return AddrList(raw, &amp;::freeaddrinfo);
+}
+
+std::optional&lt;Socket&gt; connect_any(const addrinfo* list) {
+    for (const addrinfo* p = list; p; p = p-&gt;ai_next) {
+        Socket s(::socket(p-&gt;ai_family, p-&gt;ai_socktype, p-&gt;ai_protocol));
+        if (!s.valid()) continue;
+        if (::connect(s.get(), p-&gt;ai_addr, p-&gt;ai_addrlen) == 0) return s;  // moved out
+        // on failure `s` is destroyed here and close() runs for us
+    }
+    return std::nullopt;
+}
+
+// string_view lets us shrink the "still to send" window without copying.
+bool send_all(const Socket&amp; s, std::string_view data) {
+    while (!data.empty()) {
+        ssize_t w = ::send(s.get(), data.data(), data.size(), 0);
+        if (w &lt; 0) return false;
+        data.remove_prefix(static_cast&lt;size_t&gt;(w));
+    }
+    return true;
+}
+
+int main(int argc, char** argv) {
+    std::string host = argc &gt; 1 ? argv[1] : "example.com";
+    std::string path = argc &gt; 2 ? argv[2] : "/";
+
+    auto addrs = resolve(host, "80");
+    if (!addrs) return 1;
+
+    auto sock = connect_any(addrs-&gt;get());
+    if (!sock) { std::perror("connect"); return 1; }
+
+    std::string req = "GET " + path + " HTTP/1.1\r\n"
+                      "Host: " + host + "\r\n"
+                      "Connection: close\r\n\r\n";
+    if (!send_all(*sock, req)) { std::perror("send"); return 1; }
+
+    char buf[4096];
+    for (ssize_t r; (r = ::recv(sock-&gt;get(), buf, sizeof buf, 0)) &gt; 0;)
+        std::cout.write(buf, r);
+
+    return 0;  // sock and addrs clean themselves up, in reverse order of creation
+}</code></pre>
+  <p><strong>Why this is better than the C version.</strong> Count the <code>close()</code> calls in <code>main</code>: zero. Count the early returns: three. In C each of those returns would need its own cleanup, and the fourth one you add next month is the one you forget. Here, <code>Socket</code>'s destructor and <code>unique_ptr</code>'s deleter run automatically. <code>std::optional</code> makes "this might fail" visible in the function signature instead of a magic <code>-1</code>. <code>std::string_view</code> gives <code>send_all</code> a window onto the data that it can shrink without copying a byte.</p>
+  <p><strong>Where a real library fits.</strong> In production you would use libcurl (C) or cpp-httplib / Boost.Beast (C++). Internally, libcurl does exactly this: <code>getaddrinfo</code> (with its own cache and parallel IPv4/IPv6 "happy eyeballs" connect), a non-blocking <code>connect</code> with a timeout, the same send/recv loops, plus HTTP parsing, redirects, TLS, and connection reuse. Knowing this program means you can read libcurl's verbose output (<code>curl -v</code>) and understand every line.</p>
+
+  <!-- 7 -->
+  <h2 class="q-use">Real-world use cases</h2>
+  <h3>Debugging "the API is slow"</h3>
+  <p>With the request journey in your head, you measure each layer. <code>dig example.com</code> for DNS. <code>curl -w '%{time_connect} %{time_starttransfer} %{time_total}'</code> for connect vs server think-time vs transfer. If connect is 200 ms, it's the network or a full accept queue. If starttransfer is 3 s, it's inside your process (usually the database). You stop guessing.</p>
+  <h3>Picking a tech stack</h3>
+  <p>Should this service use HTTP/1.1, HTTP/2, gRPC, or WebSockets? That question is unanswerable from a framework's docs and trivial from first principles: how many round trips can you afford, do you need multiplexing, is the payload binary, does the server need to push? Days 3 and 24 give you the vocabulary.</p>
+  <h3>Reading other people's code</h3>
+  <p>Every web framework, in any language, has the same shape underneath: a listening socket, an accept loop, a parser, a router, a chain of middlewares, a handler, a serializer. Once you have built each one in C, you can open Express, Django, Spring, Actix or Gin and find each piece in minutes.</p>
+  <h3>How real tools do it</h3>
+  <p><strong>Nginx</strong> is a C program whose core is: open listening sockets, run an event loop per worker process, accept connections, parse HTTP with a hand-written state machine, proxy to an upstream over another socket. <strong>Postgres</strong> is a C program that listens on port 5432, forks one process per client connection, and reads a binary protocol from the socket. <strong>Redis</strong> is a C program with a single-threaded event loop reading a text protocol (RESP) from sockets. Every one of them is "a process that reads from file descriptors and writes to file descriptors". You will read parts of each one in this course.</p>
+
+  <!-- 8 -->
+  <h2 class="q-whatif">What if it's missing?</h2>
+  <h3>If you skip first principles entirely</h3>
+  <div class="danger">
+    <p>You can still ship. Many people do. The cost arrives later, as a specific set of symptoms: you copy configuration you don't understand (<code>keepAliveTimeout</code>, <code>poolSize</code>, <code>backlog</code>) and change it by trial and error; you cannot tell whether a bug is in your code, the framework, the kernel, or the network; you over-provision servers because you can't find the bottleneck; and you cannot evaluate a new tool except by its popularity. None of these are fatal on a small project. All of them are expensive on a large one.</p>
+  </div>
+  <h3>If you do it wrong</h3>
+  <p>The opposite failure is <em>only</em> first principles: rewriting everything from scratch, refusing libraries, treating every dependency as a weakness. That produces slow, buggy, half-finished infrastructure. The course's rule stands: build it once to understand it, then use the production tool. Understanding is the asset, not the hand-written code.</p>
+  <h3>If a layer of the journey is not available</h3>
+  <ul>
+    <li><strong>No DNS</strong> (resolver down, or an internal network without one). Fall back to IP addresses in configuration, <code>/etc/hosts</code>, or a service-discovery system (Consul, Kubernetes DNS). Trade-off: hard-coded IPs break on every redeploy. <code>getaddrinfo</code> accepts a literal IP, so the C program above works unchanged with <code>./http_get 93.184.216.34 /</code> (though the <code>Host</code> header still needs the name).</li>
+    <li><strong>No TCP</strong> (you must use UDP, e.g. for games, DNS itself, or QUIC). You lose ordering, reliability and flow control and must rebuild whichever of those you need. HTTP/3 does exactly this over QUIC over UDP. Day 3 and Day 24 touch this.</li>
+    <li><strong>No HTTP</strong> (a custom binary protocol over raw TCP). Perfectly valid, and how Postgres, Redis, and most databases work. You give up every HTTP tool (browsers, curl, proxies, caches) and must write your own framing. Day 5 covers framing and serialization.</li>
+    <li><strong>No network at all</strong> (two processes on one machine). Use a Unix domain socket: the same <code>socket()/connect()/accept()</code> calls, but no IP, no TCP, no handshake, much faster. Postgres defaults to one. Same code shape, different address family.</li>
+  </ul>
+
+  <!-- 9 -->
+  <h2>Common mistakes &amp; gotchas</h2>
+  <ul>
+    <li><strong>Assuming one <code>recv()</code> returns one message.</strong> TCP has no messages, only bytes. Always loop and always have a way to find the end (Content-Length, a delimiter, or EOF).</li>
+    <li><strong>Ignoring partial <code>send()</code>.</strong> On a slow link or full buffer, <code>send</code> returns fewer bytes than asked. Without the loop, the tail of your request silently vanishes.</li>
+    <li><strong>Forgetting <code>freeaddrinfo</code> / <code>close</code> on error paths.</strong> Each leaked fd is one fewer connection your process can make. The limit is often 1024. Use RAII in C++; in C, use a single cleanup label with <code>goto</code>.</li>
+    <li><strong>Byte order.</strong> Ports and IPv4 addresses on the wire are big-endian. <code>htons</code>/<code>htonl</code> convert. Forgetting them connects to port 36895 instead of 8080 (that's 0x1F90 byte-swapped).</li>
+    <li><strong>Missing <code>Host</code> header.</strong> Most servers return 400 without it, because one IP hosts many names.</li>
+    <li><strong>Blocking forever.</strong> <code>connect</code> and <code>recv</code> block with no timeout by default. A dead server hangs your program. Days 14 and 19 add timeouts and non-blocking I/O.</li>
+    <li><strong>Treating DNS as free.</strong> An uncached lookup is a network round trip. Hot loops that call <code>getaddrinfo</code> per request are a classic hidden latency source.</li>
+  </ul>
+
+  <!-- 10 -->
+  <h2>Think about it</h2>
+  <details><summary>1. Run <code>http_get</code> against three different sites. Which headers appear in every response? Which are specific to one server?</summary>
+    <p>You will almost always see <code>Content-Type</code>, <code>Content-Length</code> (or <code>Transfer-Encoding: chunked</code>), <code>Date</code>, and often <code>Server</code>. Site-specific ones include cache headers, security headers (<code>Strict-Transport-Security</code>), and cookies. The point: the format is fixed, the vocabulary is open. Day 3 covers the important ones.</p>
+  </details>
+  <details><summary>2. What would happen if you removed the <code>Connection: close</code> header?</summary>
+    <p>HTTP/1.1 defaults to keep-alive, so the server would send the response and then wait for your next request. Your <code>recv</code> loop waits for EOF, which never comes, so the program hangs after printing the response, until the server's idle timeout (often 5 to 60 s) closes it. To handle keep-alive correctly you must parse <code>Content-Length</code> and stop reading after that many body bytes. That is Day 3's parser.</p>
+  </details>
+  <details><summary>3. What would happen if <code>send()</code> returned 0 or you sent the request one byte at a time?</summary>
+    <p>It would work. TCP is a stream; the server's parser reassembles bytes regardless of how they were chunked on the way in. This is also why a server can never assume it received the whole request in one <code>recv</code>: the client may be slow, or malicious (the "Slowloris" attack sends one byte every few seconds to tie up connections, Day 18).</p>
+  </details>
+  <details><summary>4. Change the C++ <code>Socket</code> to allow copying. What exactly breaks?</summary>
+    <p>Two <code>Socket</code> objects hold the same fd. When the first is destroyed it calls <code>close(fd)</code>. The kernel may then reuse that fd number for a new file or connection. The second object, still holding the old number, later closes or writes to <em>someone else's</em> descriptor. This is a real bug class in C servers; deleting the copy constructor makes it a compile error instead.</p>
+  </details>
+  <details><summary>5. (Harder) Modify <code>http_get.c</code> to print how long the DNS step and the connect step each took, using <code>clock_gettime(CLOCK_MONOTONIC, ...)</code>. Run it twice in a row. Why is the second DNS time near zero?</summary>
+    <p>The system resolver (or a local caching daemon such as systemd-resolved) cached the answer for its TTL. The connect time does not change, because every run performs a new three-way handshake. This is the first measurement in the "where does the time go" table, made by you.</p>
+  </details>
+
+  <!-- 11 -->
+  <h2>Quiz</h2>
+  <details><summary>1. Why does an HTTP request need at least one full round trip before any data is sent?</summary><p>TCP's three-way handshake (SYN, SYN+ACK, ACK) must complete before the stream exists. Only then can the client send the request bytes. TLS adds one or two more. This is why connection reuse matters so much.</p></details>
+  <details><summary>2. A backend process receives a request. Which kernel call hands it the connection, and what does that call return?</summary><p><code>accept()</code>. It returns a new file descriptor for that one connection; the listening socket's fd is unchanged and keeps accepting others.</p></details>
+  <details><summary>3. When should you use a framework rather than hand-written socket code?</summary><p>Almost always in production. Hand-writing is for understanding (and rare cases like embedded or extreme performance). The goal of writing it once is to be able to debug, configure and choose the framework well.</p></details>
+  <details><summary>4. Why is "read until <code>recv</code> returns 0" a correct way to find the end of the response in today's program, and when would it be wrong?</summary><p>Because we sent <code>Connection: close</code>, the server closes after one response, and 0 means EOF. With keep-alive the connection stays open, so you must use <code>Content-Length</code> or chunked encoding to find the end.</p></details>
+  <details><summary>5. Name the six syscalls a TCP client needs, in order.</summary><p><code>getaddrinfo</code> (DNS), <code>socket</code>, <code>connect</code>, <code>send</code>, <code>recv</code>, <code>close</code>.</p></details>
+
+  <!-- 12 -->
+  <h2>Summary &amp; key terms</h2>
+  <p>A backend is a process that reads bytes from a socket, does work, and writes bytes back. Getting those bytes there involves DNS (name to address), TCP (reliable stream with a handshake), and HTTP (a text format with a request line, headers, blank line, body). First principles means knowing what each layer does so that, when the framework hides it and it breaks, you can reason one layer down. The course builds every layer by hand once, in C and C++, then shows how the real tools do it and what to do when they're not there.</p>
+  <div class="table-wrap">
+  <table class="glossary">
+    <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>First principles</td><td>Understanding a tool by the problem it solves and the mechanism underneath, rather than by its API.</td></tr>
+      <tr><td>DNS</td><td>Domain Name System. Maps names to IP addresses, usually over UDP port 53, with TTL-based caching.</td></tr>
+      <tr><td>TCP</td><td>Transmission Control Protocol. Reliable, ordered byte stream on top of IP. Starts with a three-way handshake.</td></tr>
+      <tr><td>RTT</td><td>Round-trip time. The latency of one packet there and back. The unit in which network costs are counted.</td></tr>
+      <tr><td>Socket / fd</td><td>The kernel object for one connection endpoint, exposed to your program as an integer file descriptor.</td></tr>
+      <tr><td>Three-way handshake</td><td>SYN, SYN+ACK, ACK. Establishes a TCP connection. Done by the kernel, finished before <code>accept()</code> returns.</td></tr>
+      <tr><td>HTTP/1.1</td><td>Text protocol: request line, headers, blank line, body. Lines end in <code>\r\n</code>.</td></tr>
+      <tr><td>Keep-alive</td><td>Reusing one TCP connection for many HTTP requests, saving a handshake each time. Default in HTTP/1.1.</td></tr>
+      <tr><td>Partial read/write</td><td><code>recv</code>/<code>send</code> may transfer fewer bytes than asked. Always loop.</td></tr>
+      <tr><td>RAII</td><td>Resource Acquisition Is Initialization. In C++, a resource is owned by an object and released by its destructor on every exit path.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 13 -->
+  <nav class="day-nav">
+    <a href="#" aria-disabled="true">← Day 0</a>
+    <a href="../">Home</a>
+    <a href="day02.html">Day 2 →</a>
+  </nav>
+</main>
+
+<footer>
+  Backend From First Principles in C/C++ · <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">source on GitHub</a>
+</footer>
+</body>
+</html>

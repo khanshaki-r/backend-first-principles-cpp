@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 2 · What a backend is</title>
+<meta name="description" content="What a backend literally is: a process blocked in accept(). Client, network, process, OS. A minimal TCP server in C that answers a browser, the same with RAII in C++, and what happens when there is no backend at all.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../">Backend From First Principles · C/C++</a>
+    <nav>
+      <a href="../#syllabus">Syllabus</a>
+      <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle theme">Theme</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>Day 2: What a backend is, how it works, and why it exists</h1>
+  <p class="day-meta">
+    <span class="tag">Videos 3 &amp; 4</span>
+    <span class="tag">~35 min read</span>
+    Source lessons: <a href="https://www.youtube.com/playlist?list=PLui3EUkuMTPgZcV0QhQrOcwMPcBCcd_Q1">3. What is a Backend, how do they work and why do we need them?</a> ·
+    <a href="https://www.youtube.com/playlist?list=PLui3EUkuMTPgZcV0QhQrOcwMPcBCcd_Q1">4. Benefits of learning backend engineering from first principles</a>
+  </p>
+
+  <!-- 1 -->
+  <h2>What Sriniously teaches in these videos</h2>
+  <ul>
+    <li>A backend is the part of a system the user never sees: it holds the data, enforces the rules, and talks to other systems. The frontend is a view onto it.</li>
+    <li>Backends exist because of three things a client cannot provide: a <strong>shared source of truth</strong> (many users, one dataset), <strong>trust</strong> (the client is in the user's hands and can be modified), and <strong>capability</strong> (secrets, heavy computation, access to other systems).</li>
+    <li>Mechanically, a backend is a long-running program that waits for requests, does work, and replies. Request in, response out. Everything else is detail.</li>
+    <li>Learning it from first principles pays off three ways: you can debug anything because you know the layers; you are language- and framework-independent; and you can design systems rather than assemble them.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 class="q-why">The problem before backends existed</h2>
+  <p>Imagine a to-do app with no backend. It runs entirely on your laptop, stores its list in a file. It works perfectly, until you want to see the list on your phone. Now the data lives in two places and must be synchronized. Add a second user who shares the list, and you have three copies, conflicts, and no answer to "which one is right?"</p>
+  <p>Now imagine the app lets you buy things. The price is computed on your laptop. A user opens the developer tools, changes <code>price = 0.01</code>, and clicks buy. Nothing stops them, because every line of code the client runs is under the user's control.</p>
+  <p>Finally imagine the app needs to send an email. That requires credentials for an email service. If the credentials are in the client, every user has them.</p>
+  <p>Those three problems have one solution: put a program <em>somewhere the user cannot reach</em>, give it the single copy of the data, make it enforce the rules, and give it the secrets. Clients send it requests; it decides what happens. That program is the backend. The network between them is the trust boundary.</p>
+  <div class="note">
+    <p><strong>The one-line definition.</strong> A backend is a process you control, reachable over a network, that owns the truth. "You control" gives trust. "Over a network" gives sharing. "Owns the truth" gives consistency.</p>
+  </div>
+
+  <!-- 3 -->
+  <h2 class="q-when">When you need a backend, and when you don't</h2>
+  <p>You need one when any of these is true:</p>
+  <ul>
+    <li>More than one device or user must see the same data.</li>
+    <li>Some rule must hold even if the user tampers with the client (prices, permissions, rate limits, uniqueness of usernames).</li>
+    <li>Something must happen when no client is running: scheduled jobs, receiving webhooks, sending notifications.</li>
+    <li>You hold a secret the user must not have: API keys, payment credentials, other users' data.</li>
+    <li>The computation is too heavy or the data too large for the client.</li>
+  </ul>
+  <p>You do <em>not</em> need one when none of those hold. A calculator, a note-taking app for one device, a static documentation site, a game with no leaderboard: these are better without a backend. No server to pay for, no outages, no data breach possible, works offline. Many products add a backend on day one out of habit and then carry its cost forever. The honest question is "which of the five reasons applies?" If the answer is none, don't build one yet.</p>
+  <p>There is a middle ground, covered in the "what if" section: a static site with a third-party API for the one thing that needs a server, or local-first apps that sync.</p>
+
+  <!-- 4 -->
+  <h2 class="q-how">How a backend works, from the OS up</h2>
+  <p>Strip away every framework and a backend is this: a process that asks the kernel for a listening socket, then loops forever doing <code>accept</code>, <code>recv</code>, work, <code>send</code>, <code>close</code>. Here are the four parts and what each one actually does.</p>
+
+  <h3>The client</h3>
+  <p>Any program that opens a TCP connection and speaks the protocol: a browser, a mobile app, <code>curl</code>, another backend. From the server's point of view they are identical: a stream of bytes arriving on a file descriptor. The server cannot tell a browser from a Python script, which is exactly why it must not trust anything the client says (Day 7).</p>
+
+  <h3>The network</h3>
+  <p>Day 1 covered DNS and TCP. The one new idea today: on the server side, the kernel does the handshake <em>on its own</em>. Your process never sees SYN packets. It calls <code>listen()</code> once, and from then on the kernel completes handshakes in the background and parks finished connections in a queue (the <em>accept queue</em> or <em>backlog</em>). Your process drains that queue with <code>accept()</code>. If the queue fills because your process is too slow, new clients see connection timeouts or resets even though your process is "running". This is the first scaling limit you will meet, and it is set by one integer argument to <code>listen()</code>.</p>
+
+  <h3>The process</h3>
+  <p>Four states, forever:</p>
+<pre class="diagram">
+          socket()  ->  bind(:8080)  ->  listen(backlog)        [done once at startup]
+                                            |
+                 +--------------------------+
+                 |
+                 v
+     +----> accept()  --- BLOCKS until the kernel has a completed connection
+     |         |           (process is asleep here; uses 0% CPU)
+     |         v
+     |      recv(conn_fd) --- BLOCKS until bytes arrive; may return a partial request
+     |         |
+     |         v
+     |      parse -> route -> handler -> (maybe talk to a DB over another socket)
+     |         |
+     |         v
+     |      send(conn_fd, response)
+     |         |
+     |         v
+     +----- close(conn_fd)      (listening socket stays open)
+</pre>
+  <p>The word <strong>blocks</strong> is the key to everything that follows in this course. A blocking call puts the process to sleep until the kernel has something for it. That is efficient (no busy-waiting) but it means <em>this process can serve exactly one client at a time</em>. While it is in <code>recv</code> waiting for a slow client, every other client sits in the accept queue. Day 19 to 21 are entirely about escaping this: threads, processes, non-blocking sockets, <code>epoll</code>. Today we accept the limitation to see the shape clearly.</p>
+
+  <h3>The OS</h3>
+  <p>The kernel owns every socket. It holds the receive buffer where incoming bytes wait until you <code>recv</code> them, the send buffer where your outgoing bytes wait to be transmitted, the accept queue, the TCP state machine, retransmission timers, and the file-descriptor table that maps your little integers to all of this. When people say a server "handles 10 000 connections", they mean the kernel holds 10 000 of these structures and the process has 10 000 fds. Each one costs a few kilobytes of kernel memory. This is where the per-connection limits come from (<code>ulimit -n</code>, Day 19).</p>
+
+  <h3>Why the browser understands the reply</h3>
+  <p>Because the server writes valid HTTP: a status line, headers, a blank line, a body. The browser doesn't know or care that the server is 60 lines of C. The protocol is the contract. Replace the C with Go, Java, or a 20 MB framework and the bytes on the wire are the same. That is what "language is a detail" means.</p>
+
+  <!-- 5 -->
+  <h2>See it in C</h2>
+  <p>A complete backend. It listens on port 8080, accepts one connection at a time, prints the request line, and returns an HTML page. Run it, then open <code>http://localhost:8080</code> in a browser, or run <code>curl -v localhost:8080</code> to see both directions as text.</p>
+  <div class="code-head"><span>hello_server.c</span><span>C17 · POSIX</span></div>
+  <pre><code class="language-c">// hello_server.c — a backend in under 70 lines: a process that waits in accept().
+#define _POSIX_C_SOURCE 200112L
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;        /* close */
+#include &lt;netinet/in.h&gt;    /* sockaddr_in, htons, INADDR_ANY */
+#include &lt;sys/socket.h&gt;    /* socket, bind, listen, accept, recv, send */
+
+int main(void) {
+    /* 1. Ask the kernel for a TCP socket.  It is an endpoint with no address yet. */
+    int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listen_fd &lt; 0) { perror("socket"); return 1; }
+
+    /* Allow immediate restart.  Without this, after you stop the server the port
+       stays reserved for ~60 s (TCP TIME_WAIT) and bind() fails with
+       "Address already in use". */
+    int yes = 1;
+    setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &amp;yes, sizeof yes);
+
+    /* 2. bind: attach the socket to an address.  0.0.0.0 means "every interface
+       on this machine".  Port and address are in NETWORK byte order (big-endian),
+       hence htons/htonl.  Forget them and you listen on port 36895. */
+    struct sockaddr_in addr = {0};
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port        = htons(8080);
+    if (bind(listen_fd, (struct sockaddr *)&amp;addr, sizeof addr) &lt; 0) {
+        perror("bind"); return 1;
+    }
+
+    /* 3. listen: from now on the KERNEL completes TCP handshakes for us and queues
+       finished connections.  16 is the queue length (backlog).  If it fills,
+       new clients are refused or time out even though we are "running". */
+    if (listen(listen_fd, 16) &lt; 0) { perror("listen"); return 1; }
+    printf("listening on http://localhost:8080\n");
+
+    for (;;) {
+        /* 4. accept: BLOCK here until a connection is ready.  The process sleeps;
+           it uses no CPU.  Returns a NEW fd that represents this one client.
+           The listening fd is untouched and keeps queueing other clients. */
+        struct sockaddr_in peer;
+        socklen_t peer_len = sizeof peer;
+        int conn_fd = accept(listen_fd, (struct sockaddr *)&amp;peer, &amp;peer_len);
+        if (conn_fd &lt; 0) { perror("accept"); continue; }
+
+        /* 5. recv: read whatever the client has sent so far.  A browser sends an
+           HTTP request as plain text.  One recv() may return only part of it;
+           we tolerate that here because we only look at the first line.
+           (Day 3 builds a parser that handles arbitrary chunking.) */
+        char buf[4096];
+        ssize_t n = recv(conn_fd, buf, sizeof buf - 1, 0);
+        if (n &gt; 0) {
+            buf[n] = '\0';
+            char *eol = strstr(buf, "\r\n");     /* end of the request line */
+            if (eol) *eol = '\0';
+            printf("request: %s\n", buf);         /* e.g. "GET / HTTP/1.1" */
+        }
+
+        /* 6. send: write a valid HTTP/1.1 response.
+           Status line, headers, blank line, body.  Content-Length tells the
+           browser exactly how many body bytes to expect, so it knows when the
+           page is complete. */
+        const char *body = "&lt;h1&gt;Hello from a C process&lt;/h1&gt;";
+        char resp[512];
+        int resp_len = snprintf(resp, sizeof resp,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "Content-Length: %zu\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "%s", strlen(body), body);
+        send(conn_fd, resp, (size_t)resp_len, 0);
+
+        /* 7. close THIS connection.  The browser sees EOF and knows we are done.
+           The listening socket stays open; we loop back to accept(). */
+        close(conn_fd);
+    }
+}</code></pre>
+  <p><strong>Trace one request through it.</strong> You start the program: steps 1 to 3 run, and it prints "listening". The process is now asleep inside <code>accept()</code>. You open the browser. The browser's kernel sends SYN; your kernel replies SYN+ACK; the browser's kernel sends ACK. Your process is still asleep. The kernel puts the finished connection in the accept queue and wakes your process. <code>accept()</code> returns, say, fd 4. The browser's request bytes have probably already arrived in the kernel's receive buffer for fd 4, so <code>recv()</code> returns immediately with "GET / HTTP/1.1\r\nHost: localhost:8080\r\n...". You print the first line, write the response into the socket, close fd 4. The browser renders the HTML. Your process loops back to <code>accept()</code> and sleeps. Total: seven syscalls and one page served.</p>
+  <p><strong>Try this.</strong> Open the page twice quickly, or in two tabs. It works, because each request is short and the loop is fast. Now add <code>sleep(5);</code> before <code>send</code> and open two tabs. The second one waits 10 seconds. That is the one-client-at-a-time limit made visible. Hold on to that feeling; Day 19 fixes it.</p>
+
+  <!-- 6 -->
+  <h2>See it in modern C++</h2>
+  <p>Same syscalls, same behaviour on the wire. The difference is that every file descriptor is owned by an object, so the <code>continue</code> in the accept loop, an early return, or a thrown exception can never leak a connection. We also build the response with <code>std::string</code> instead of a fixed buffer that could silently truncate a long body.</p>
+  <div class="code-head"><span>hello_server.cpp</span><span>C++20 · POSIX</span></div>
+  <pre><code class="language-cpp">// hello_server.cpp — the same server, with every resource owned by an object.
+#include &lt;cstdint&gt;
+#include &lt;cstdio&gt;
+#include &lt;iostream&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+#include &lt;unistd.h&gt;
+#include &lt;netinet/in.h&gt;
+#include &lt;sys/socket.h&gt;
+
+// Move-only owner of a file descriptor.  Destructor closes it.
+class Socket {
+    int fd_ = -1;
+public:
+    Socket() = default;
+    explicit Socket(int fd) : fd_(fd) {}
+    ~Socket() { if (fd_ &gt;= 0) ::close(fd_); }
+    Socket(const Socket&amp;)            = delete;
+    Socket&amp; operator=(const Socket&amp;) = delete;
+    Socket(Socket&amp;&amp; o) noexcept : fd_(o.fd_) { o.fd_ = -1; }
+    Socket&amp; operator=(Socket&amp;&amp; o) noexcept {
+        if (this != &amp;o) { if (fd_ &gt;= 0) ::close(fd_); fd_ = o.fd_; o.fd_ = -1; }
+        return *this;
+    }
+    int  get()   const { return fd_; }
+    bool valid() const { return fd_ &gt;= 0; }
+};
+
+// socket + setsockopt + bind + listen, or nothing.  The caller cannot forget a step.
+std::optional&lt;Socket&gt; make_listener(std::uint16_t port, int backlog = 16) {
+    Socket s(::socket(AF_INET, SOCK_STREAM, 0));
+    if (!s.valid()) return std::nullopt;
+
+    int yes = 1;
+    ::setsockopt(s.get(), SOL_SOCKET, SO_REUSEADDR, &amp;yes, sizeof yes);
+
+    sockaddr_in addr{};
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port        = htons(port);
+    if (::bind(s.get(), reinterpret_cast&lt;sockaddr*&gt;(&amp;addr), sizeof addr) &lt; 0) return std::nullopt;
+    if (::listen(s.get(), backlog) &lt; 0) return std::nullopt;
+    return s;   // moved out; on any failure above, s is destroyed and closed
+}
+
+// Build a complete HTTP/1.1 response.  std::string grows, so no truncation risk.
+std::string http_response(std::string_view body, std::string_view type = "text/html") {
+    std::string r;
+    r.reserve(128 + body.size());
+    r += "HTTP/1.1 200 OK\r\n";
+    r += "Content-Type: "; r += type; r += "\r\n";
+    r += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+    r += "Connection: close\r\n";
+    r += "\r\n";
+    r += body;
+    return r;
+}
+
+int main() {
+    auto listener = make_listener(8080);
+    if (!listener) { std::perror("listen"); return 1; }
+    std::cout &lt;&lt; "listening on http://localhost:8080\n";
+
+    for (;;) {
+        // One Socket per connection.  Its lifetime IS the connection's lifetime.
+        Socket conn(::accept(listener-&gt;get(), nullptr, nullptr));
+        if (!conn.valid()) { std::perror("accept"); continue; }   // nothing to leak
+
+        char buf[4096];
+        ssize_t n = ::recv(conn.get(), buf, sizeof buf, 0);
+        if (n &gt; 0) {
+            std::string_view req(buf, static_cast&lt;std::size_t&gt;(n));
+            std::cout &lt;&lt; "request: " &lt;&lt; req.substr(0, req.find("\r\n")) &lt;&lt; '\n';
+        }
+
+        std::string resp = http_response("&lt;h1&gt;Hello from a C++ process&lt;/h1&gt;");
+        ::send(conn.get(), resp.data(), resp.size(), 0);
+
+        // `conn` goes out of scope here: close() is guaranteed, every iteration.
+    }
+}</code></pre>
+  <p><strong>What changed and why it matters.</strong> <code>make_listener</code> bundles the four startup steps so they cannot be done in the wrong order or half-done. <code>std::optional&lt;Socket&gt;</code> makes failure part of the type. The per-connection <code>Socket conn</code> is destroyed at the end of each loop iteration, so <code>close</code> happens even on the <code>continue</code>, even if a future version throws. <code>std::string_view</code> gives us <code>find</code> and <code>substr</code> on the raw buffer without copying and without needing a NUL terminator, which removes the <code>buf[n] = '\0'</code> trick and the off-by-one it invites.</p>
+  <p><strong>Where a real library fits.</strong> cpp-httplib (header-only C++), Boost.Beast, or Drogon do what this file does, plus: a thread pool so many clients are served at once, a full HTTP parser, keep-alive, routing, TLS. Open cpp-httplib's <code>Server::listen_internal</code> and you will find this exact loop: <code>accept</code>, hand the fd to a worker, worker calls <code>recv</code>, parses, calls your handler, calls <code>send</code>, closes. Nginx's <code>ngx_event_accept</code> is the same idea with non-blocking sockets. The shape never changes.</p>
+
+  <!-- 7 -->
+  <h2 class="q-use">Real-world use cases</h2>
+  <h3>An e-commerce checkout</h3>
+  <p>The client shows a cart and a "pay" button. The backend recomputes the total from the database prices (never trusting the client's number), checks stock, charges the card using a secret API key the client never sees, writes the order, and replies with an order ID. All five reasons for a backend apply at once: shared data, trust, secrets, something must happen server-side, and other systems are involved.</p>
+  <h3>A chat app</h3>
+  <p>Messages must reach other users' devices, so a process somewhere must hold them and fan them out. The backend's accept loop is handling thousands of long-lived connections at once, which is the exact problem today's one-at-a-time server cannot solve. Day 21 and 24 build this.</p>
+  <h3>A mobile game leaderboard</h3>
+  <p>The game runs on the phone with no backend, until scores must be compared across players. Then a tiny backend appears whose only job is "accept a score, verify it looks plausible, store it, return the top 100". Its trust role is the important one: scores submitted by a modified client must be caught here, because they cannot be caught anywhere else.</p>
+  <h3>Internal services talking to each other</h3>
+  <p>In a large system, most clients of a backend are other backends. The "orders" service calls the "inventory" service. Same <code>accept</code>/<code>recv</code>/<code>send</code>, same HTTP, but the trust boundary is different: inside a network you control, you may trust the caller's identity but must still validate its data. Day 8 and Day 18 return to this.</p>
+  <h3>How real tools do it</h3>
+  <p><strong>Nginx</strong> starts a master process that opens the listening sockets, then forks N worker processes that all call <code>accept</code> on the same sockets (the kernel hands each connection to one of them). <strong>Postgres</strong> has a "postmaster" process in exactly today's loop; for each accepted connection it <code>fork()</code>s a child process that serves that one client for its whole life. <strong>Redis</strong> is a single process, single thread, that uses <code>epoll</code> to serve tens of thousands of connections in one loop. Three different answers to the one-at-a-time problem, all starting from today's seven syscalls.</p>
+
+  <!-- 8 -->
+  <h2 class="q-whatif">What if it's missing?</h2>
+  <h3>If there is no backend at all</h3>
+  <div class="danger">
+    <p>Any rule enforced only in the client is not enforced. Any data stored only in the client is one device loss from gone. Any secret shipped in the client is public. A "backend-less" product that needs any of the five reasons will be discovered either by a bug report ("my list disappeared when I got a new phone") or by an attacker ("I set the price to zero"). The failure is silent until it isn't.</p>
+  </div>
+  <h3>If you build it wrong</h3>
+  <ul>
+    <li><strong>Trusting the client.</strong> Taking the price, the user ID, or the "isAdmin" flag from the request body. The backend exists to be the thing that <em>doesn't</em> do this.</li>
+    <li><strong>Keeping state in the process.</strong> Storing sessions or data in a global variable works with one server and breaks the moment you run two. Day 20 (stateless design) and Day 26 (12-factor) cover this.</li>
+    <li><strong>Doing slow work inline.</strong> Sending an email inside the request handler means the user waits for the email provider. Day 12 moves that to a queue.</li>
+    <li><strong>One client at a time in production.</strong> Today's design, shipped. It falls over at the second simultaneous user. Day 19 to 21.</li>
+  </ul>
+  <h3>If the usual pieces are not available</h3>
+  <ul>
+    <li><strong>You cannot run a server</strong> (no budget, no ops). Use a static site plus a managed service for the one thing that needs a backend: an auth provider, a hosted database with row-level security, a serverless function. You still have a backend; you just rent it. Trade-off: vendor lock-in and per-request pricing versus zero operations.</li>
+    <li><strong>The network is unreliable or absent</strong> (field apps, offline-first). Local-first design: the client keeps a full local copy and syncs when it can. The backend becomes a sync and conflict-resolution service rather than the only copy. Trade-off: conflict resolution is hard, and "trust" rules must be re-checked on sync.</li>
+    <li><strong>No central server is acceptable</strong> (peer-to-peer, privacy). Each client is also a server: it runs today's accept loop. BitTorrent and some messaging apps work this way. Trade-off: you give up the single source of truth and must handle NAT traversal, discovery, and untrusted peers.</li>
+    <li><strong>Only one machine, two processes</strong> (a CLI talking to a daemon). Same code, but <code>AF_UNIX</code> instead of <code>AF_INET</code>: a Unix domain socket at a filesystem path. No port, no handshake over IP, much faster, and the kernel can tell you the peer's user ID for free. Docker's CLI talks to its daemon this way.</li>
+  </ul>
+
+  <!-- 9 -->
+  <h2>Common mistakes &amp; gotchas</h2>
+  <ul>
+    <li><strong>"Address already in use" on restart.</strong> TCP keeps the old port in TIME_WAIT for about a minute. <code>SO_REUSEADDR</code> before <code>bind</code> fixes it. Every production server sets it.</li>
+    <li><strong>Forgetting <code>htons</code>.</strong> The server silently listens on the wrong port. Always check with <code>ss -ltnp</code> or <code>netstat</code>.</li>
+    <li><strong>Closing the listening socket instead of the connection socket.</strong> The server serves one request and then every <code>accept</code> fails. Keep the two fds clearly named.</li>
+    <li><strong>Never closing the connection socket.</strong> Each request leaks one fd. After about 1024 requests, <code>accept</code> returns <code>EMFILE</code> and the server is dead while still "running". RAII makes this impossible; in C, discipline does.</li>
+    <li><strong>Missing or wrong <code>Content-Length</code>.</strong> Too small and the browser truncates the page. Too large and it spins waiting for bytes that never come, until the close. Compute it from the actual body.</li>
+    <li><strong>A <code>recv</code> buffer with no room for the NUL.</strong> <code>sizeof buf - 1</code> in the C version is deliberate. Reading <code>sizeof buf</code> and then writing <code>buf[n] = 0</code> is a one-byte overflow.</li>
+    <li><strong>Backlog too small.</strong> Under a burst, the kernel refuses connections your process would have handled a millisecond later. Nginx uses 511; the kernel caps it at <code>somaxconn</code>.</li>
+    <li><strong>Binding to <code>0.0.0.0</code> without meaning to.</strong> It exposes the port on every interface, including the public one. For a local tool, bind to <code>127.0.0.1</code>.</li>
+  </ul>
+
+  <!-- 10 -->
+  <h2>Think about it</h2>
+  <details><summary>1. Start the server and run <code>curl -v localhost:8080</code>. Identify every line curl prints as either "bytes we sent" or "bytes we received".</summary>
+    <p>Lines starting with <code>&gt;</code> are the request curl sent (request line and headers). Lines with <code>&lt;</code> are the response your server wrote. The <code>*</code> lines are curl's commentary (DNS, connect). What you see is exactly the content of <code>buf</code> and <code>resp</code> in the program.</p>
+  </details>
+  <details><summary>2. What would happen if you removed the <code>close(conn_fd)</code> line?</summary>
+    <p>The browser would wait for more data (we promised <code>Connection: close</code> but never closed), eventually render after its timeout, and your process would leak one fd per request. After roughly a thousand requests, <code>accept</code> fails with "Too many open files" forever. Nothing crashes; the server just stops serving.</p>
+  </details>
+  <details><summary>3. What would happen if two copies of the server started on the same port?</summary>
+    <p>The second <code>bind</code> fails with "Address already in use" and the program exits. <code>SO_REUSEADDR</code> does not allow two live listeners (that needs <code>SO_REUSEPORT</code>, which is how some servers run multiple accept loops on one port). The kernel enforces one listener per address:port.</p>
+  </details>
+  <details><summary>4. Change the backlog to 1, add <code>sleep(5)</code> in the loop, and open five tabs at once. What do the later tabs see and why?</summary>
+    <p>The first is served; one or two sit in the accept queue; the rest get connection resets or hang in their own retry. The kernel completed their handshakes but had nowhere to put them, so it dropped them. Your process never knew they existed. This is why "the server is up" and "the server is accepting connections" are different statements.</p>
+  </details>
+  <details><summary>5. (Harder) Make the server return a different body for <code>GET /time</code> (the current time) and <code>404 Not Found</code> for anything else. What did you have to parse, and what did you have to get right in the response?</summary>
+    <p>You parsed the request line: method, path, version, separated by spaces. You had to send a different status line (<code>HTTP/1.1 404 Not Found</code>) and a correct <code>Content-Length</code> for each body. Congratulations, you have written a router (Day 4) and discovered why status codes exist (Day 3).</p>
+  </details>
+
+  <!-- 11 -->
+  <h2>Quiz</h2>
+  <details><summary>1. What are the three things a client fundamentally cannot provide that a backend can?</summary><p>A shared source of truth, trust (rules the user can't bypass), and capability (secrets, heavy work, access to other systems).</p></details>
+  <details><summary>2. Who completes the TCP handshake on the server side, and when does your process learn about a new connection?</summary><p>The kernel completes it on its own after <code>listen()</code>. Your process learns about it only when <code>accept()</code> returns the new fd.</p></details>
+  <details><summary>3. Why can today's server handle only one client at a time?</summary><p>Every call blocks. While it waits in <code>recv</code> or runs the handler for one client, it cannot call <code>accept</code> for the next one. Other clients wait in the kernel's accept queue.</p></details>
+  <details><summary>4. A product has one user, one device, and no secrets. Should it have a backend?</summary><p>No. None of the five reasons apply. Adding one brings cost, outages and attack surface for nothing. Add it when a reason appears.</p></details>
+  <details><summary>5. What is the difference between the listening socket and the connection socket?</summary><p>The listening socket is created once and only ever used with <code>accept</code>. Each <code>accept</code> returns a new connection socket that carries one client's bytes; it is closed when that client is done. Mixing them up kills the server.</p></details>
+
+  <!-- 12 -->
+  <h2>Summary &amp; key terms</h2>
+  <p>A backend exists to be the one place the user cannot tamper with: it holds the single copy of the data, enforces the rules, and keeps the secrets. Mechanically it is a process that does <code>socket</code>, <code>bind</code>, <code>listen</code> once, then loops on <code>accept</code>, <code>recv</code>, work, <code>send</code>, <code>close</code>. The kernel does the handshakes and holds the buffers; the process only sees file descriptors. Because every call blocks, the simplest server handles one client at a time, which is the limit the rest of the course spends several days removing. The browser understands the reply because the protocol, not the language, is the contract.</p>
+  <div class="table-wrap">
+  <table class="glossary">
+    <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>A process you control, reachable over a network, that owns the truth.</td></tr>
+      <tr><td>Trust boundary</td><td>The line between code you control (server) and code the user controls (client). Nothing crossing it inward is trusted.</td></tr>
+      <tr><td>Listening socket</td><td>A socket after <code>bind</code> + <code>listen</code>. Used only to <code>accept</code>. Never read from or written to.</td></tr>
+      <tr><td>Accept queue / backlog</td><td>The kernel's queue of handshake-completed connections waiting for <code>accept</code>. Its length is the argument to <code>listen</code>.</td></tr>
+      <tr><td>Connection socket</td><td>The fd returned by <code>accept</code>, representing one client. Read, write, then close.</td></tr>
+      <tr><td>Blocking call</td><td>A syscall that puts the process to sleep until the kernel has a result. Efficient, but serializes work.</td></tr>
+      <tr><td><code>SO_REUSEADDR</code></td><td>Socket option that lets you re-bind a port still in TIME_WAIT. Set it before <code>bind</code>.</td></tr>
+      <tr><td>TIME_WAIT</td><td>TCP state where a closed connection's port is held briefly so late packets don't hit a new connection.</td></tr>
+      <tr><td>Network byte order</td><td>Big-endian, used for ports and addresses on the wire. <code>htons</code>/<code>htonl</code> convert to it.</td></tr>
+      <tr><td>Unix domain socket</td><td>A socket addressed by a filesystem path, for processes on one machine. Same API, no IP or TCP.</td></tr>
+      <tr><td>Local-first</td><td>Design where each client keeps a full copy and syncs; the backend resolves conflicts instead of being the only copy.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 13 -->
+  <nav class="day-nav">
+    <a href="day01.html">← Day 1</a>
+    <a href="../">Home</a>
+    <a href="day03.html">Day 3 →</a>
+  </nav>
+</main>
+
+<footer>
+  Backend From First Principles in C/C++ · <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">source on GitHub</a>
+</footer>
+</body>
+</html>
