@@ -1,0 +1,185 @@
+/* Backend From First Principles (C/C++) — shared stylesheet
+   One file for every page. Light + dark via prefers-color-scheme, with
+   an optional manual override: <html data-theme="light|dark">. */
+
+:root {
+  --bg: #fafaf8;
+  --bg-elev: #ffffff;
+  --fg: #1d1f21;
+  --fg-muted: #5d6166;
+  --accent: #0f6b4f;
+  --accent-soft: #e2f3ec;
+  --warn: #9a4f00;
+  --warn-soft: #fff1e0;
+  --danger: #a3262b;
+  --danger-soft: #fde9ea;
+  --border: #e1e2e5;
+  --code-bg: #f3f4f6;
+  --link: #0b5fa5;
+  --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --radius: 8px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121416;
+    --bg-elev: #1a1d20;
+    --fg: #e6e7e9;
+    --fg-muted: #9aa0a6;
+    --accent: #5fcf9d;
+    --accent-soft: #15302a;
+    --warn: #f0a44a;
+    --warn-soft: #33240f;
+    --danger: #f08a8e;
+    --danger-soft: #3a1b1d;
+    --border: #2b2f33;
+    --code-bg: #1f2327;
+    --link: #7cb7ff;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121416;
+  --bg-elev: #1a1d20;
+  --fg: #e6e7e9;
+  --fg-muted: #9aa0a6;
+  --accent: #5fcf9d;
+  --accent-soft: #15302a;
+  --warn: #f0a44a;
+  --warn-soft: #33240f;
+  --danger: #f08a8e;
+  --danger-soft: #3a1b1d;
+  --border: #2b2f33;
+  --code-bg: #1f2327;
+  --link: #7cb7ff;
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.65;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout */
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+  position: sticky; top: 0; z-index: 10;
+}
+.site-header .inner {
+  max-width: 900px; margin: 0 auto; padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.site-header .brand { font-weight: 700; color: var(--fg); }
+.site-header nav a { margin-left: 14px; font-size: .95em; }
+.theme-toggle {
+  border: 1px solid var(--border); background: transparent; color: var(--fg);
+  border-radius: 999px; padding: 4px 10px; cursor: pointer; font: inherit; font-size: .85em;
+}
+main { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+footer { max-width: 900px; margin: 0 auto; padding: 24px 16px; color: var(--fg-muted); font-size: .9em; border-top: 1px solid var(--border); }
+
+/* Typography */
+h1 { font-size: 2rem; line-height: 1.2; margin: .2em 0 .4em; }
+h2 { font-size: 1.45rem; margin: 2.2em 0 .6em; padding-top: .6em; border-top: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.6em 0 .5em; }
+p, ul, ol { margin: 0 0 1em; }
+li { margin: .25em 0; }
+.lead { font-size: 1.1em; color: var(--fg-muted); }
+.day-meta { color: var(--fg-muted); font-size: .95em; margin-bottom: 1.5em; }
+.day-meta .tag {
+  display: inline-block; background: var(--accent-soft); color: var(--accent);
+  border-radius: 999px; padding: 1px 10px; font-size: .85em; margin-right: 6px;
+}
+
+/* Section numbering helper (the five questions) */
+.q-why::before, .q-when::before, .q-how::before, .q-use::before, .q-whatif::before {
+  display: inline-block; font-size: .7em; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 8px; border-radius: 4px; margin-right: 10px; vertical-align: middle;
+  background: var(--accent-soft); color: var(--accent);
+}
+.q-why::before { content: "WHY"; }
+.q-when::before { content: "WHEN"; }
+.q-how::before { content: "HOW"; }
+.q-use::before { content: "USE CASES"; }
+.q-whatif::before { content: "WHAT IF"; background: var(--warn-soft); color: var(--warn); }
+
+/* Code */
+code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre {
+  position: relative; background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; margin: 0 0 1.2em;
+  font-size: .88em; line-height: 1.5;
+}
+pre code { background: none; padding: 0; font-size: 1em; }
+pre.diagram { font-family: var(--mono); white-space: pre; }
+.code-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--mono); font-size: .8em; color: var(--fg-muted);
+  margin: 0 0 -1.2em; padding: 6px 12px; border: 1px solid var(--border); border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0; background: var(--bg-elev);
+}
+.code-head + pre { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: 1.2em; }
+.copy-btn {
+  position: absolute; top: 8px; right: 8px; border: 1px solid var(--border);
+  background: var(--bg-elev); color: var(--fg-muted); border-radius: 6px;
+  padding: 2px 8px; font-size: .75em; cursor: pointer; font-family: var(--font);
+}
+.copy-btn:hover { color: var(--fg); }
+
+/* Callouts */
+.note, .warn, .danger {
+  border-left: 4px solid var(--accent); background: var(--accent-soft);
+  padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; margin: 0 0 1.2em;
+}
+.warn { border-color: var(--warn); background: var(--warn-soft); }
+.danger { border-color: var(--danger); background: var(--danger-soft); }
+.note > :last-child, .warn > :last-child, .danger > :last-child { margin-bottom: 0; }
+
+/* Collapsibles (exercises, quiz answers) */
+details {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 14px; margin: 0 0 .8em; background: var(--bg-elev);
+}
+summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: .6em; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2em; font-size: .95em; }
+th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+.table-wrap { overflow-x: auto; }
+
+/* Syllabus (index page) */
+.status { display: inline-block; border-radius: 999px; padding: 1px 10px; font-size: .8em; white-space: nowrap; }
+.status[data-status="done"] { background: var(--accent-soft); color: var(--accent); }
+.status[data-status="todo"] { background: var(--code-bg); color: var(--fg-muted); }
+.progress-bar { height: 10px; background: var(--code-bg); border-radius: 999px; overflow: hidden; margin: .4em 0 1.4em; }
+.progress-bar > div { height: 100%; background: var(--accent); width: 0; transition: width .4s; }
+
+/* Day nav */
+.day-nav {
+  display: flex; justify-content: space-between; gap: 12px; margin-top: 3em;
+  padding-top: 1em; border-top: 1px solid var(--border);
+}
+.day-nav a { padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); }
+.day-nav a[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+
+/* Glossary */
+.glossary td:first-child { font-weight: 600; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  body { font-size: 16px; }
+  h1 { font-size: 1.6rem; }
+  .site-header nav a { margin-left: 10px; }
+}

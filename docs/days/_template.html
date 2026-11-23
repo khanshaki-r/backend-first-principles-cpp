@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- TEMPLATE: copy to dayNN.html and replace every {{...}} placeholder.
+     Keep every section and its order. Remove this comment in real pages. -->
+<title>Day {{NN}} · {{Short topic}}</title>
+<meta name="description" content="{{One sentence: what this day teaches.}}">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="../">Backend From First Principles · C/C++</a>
+    <nav>
+      <a href="../#syllabus">Syllabus</a>
+      <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle theme">Theme</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>Day {{NN}}: {{Full topic title}}</h1>
+  <p class="day-meta">
+    <span class="tag">Video {{N}}</span>
+    <span class="tag">{{Estimated reading time}}</span>
+    Source lesson: <a href="{{YouTube link}}">{{Video title}}</a>
+  </p>
+
+  <!-- 1. What Sriniously teaches -->
+  <h2>What Sriniously teaches in this video</h2>
+  <ul>
+    <li>{{Idea 1}}</li>
+    <li>{{Idea 2}}</li>
+    <li>{{Idea 3}}</li>
+  </ul>
+
+  <!-- 2. WHY -->
+  <h2 class="q-why">The problem before this existed</h2>
+  <p>{{Story of the pain: what engineers did before, what broke, why.}}</p>
+
+  <!-- 3. WHEN -->
+  <h2 class="q-when">When you need it, and when you don't</h2>
+  <p>{{Decision guidance: small vs large, single server vs fleet, internal vs public. Be honest about over-engineering.}}</p>
+
+  <!-- 4. HOW -->
+  <h2 class="q-how">How it works, from the bottom up</h2>
+  <p>{{Mechanism: kernel/syscalls, bytes on the wire or in memory, data structures, algorithm.}}</p>
+  <pre class="diagram">{{ASCII diagram}}</pre>
+
+  <!-- 5. See it in C -->
+  <h2>See it in C</h2>
+  <p>{{One sentence on what the program shows.}}</p>
+  <div class="code-head"><span>{{filename.c}}</span><span>C17</span></div>
+  <pre><code class="language-c">{{complete, commented C program}}</code></pre>
+  <p>{{Prose walkthrough of the important lines.}}</p>
+
+  <!-- 6. See it in modern C++ -->
+  <h2>See it in modern C++</h2>
+  <p>{{Why the C++ version is safer/clearer.}}</p>
+  <div class="code-head"><span>{{filename.cpp}}</span><span>C++20</span></div>
+  <pre><code class="language-cpp">{{complete, commented C++ program}}</code></pre>
+  <p>{{Prose walkthrough. If a real library is the honest answer, show it and explain its internals.}}</p>
+
+  <!-- 7. USE CASES -->
+  <h2 class="q-use">Real-world use cases</h2>
+  <h3>{{Scenario 1}}</h3>
+  <p>{{...}}</p>
+  <h3>How real tools do it</h3>
+  <p>{{Nginx / Postgres / Redis / ... internals in C/C++ terms.}}</p>
+
+  <!-- 8. WHAT IF -->
+  <h2 class="q-whatif">What if it's missing?</h2>
+  <h3>If you skip it entirely</h3>
+  <div class="danger"><p>{{The failure, with a short example.}}</p></div>
+  <h3>If you do it wrong</h3>
+  <p>{{Anti-patterns.}}</p>
+  <h3>If the usual tool is not available</h3>
+  <p>{{Fallbacks, trade-offs, when the fallback is actually fine.}}</p>
+
+  <!-- 9. Gotchas -->
+  <h2>Common mistakes &amp; gotchas</h2>
+  <ul>
+    <li><strong>{{Mistake}}</strong>: {{why it happens, how to avoid it}}</li>
+  </ul>
+
+  <!-- 10. Exercises -->
+  <h2>Think about it</h2>
+  <details><summary>1. {{Exercise (easy)}}</summary><p>{{Answer / hint}}</p></details>
+  <details><summary>2. What would happen if {{...}}?</summary><p>{{Answer}}</p></details>
+  <details><summary>3. {{Exercise}}</summary><p>{{Answer}}</p></details>
+
+  <!-- 11. Quiz -->
+  <h2>Quiz</h2>
+  <details><summary>1. {{Question}}</summary><p>{{Answer}}</p></details>
+  <details><summary>2. {{Question}}</summary><p>{{Answer}}</p></details>
+  <details><summary>3. {{Question}}</summary><p>{{Answer}}</p></details>
+  <details><summary>4. {{Question}}</summary><p>{{Answer}}</p></details>
+  <details><summary>5. {{Question}}</summary><p>{{Answer}}</p></details>
+
+  <!-- 12. Summary -->
+  <h2>Summary &amp; key terms</h2>
+  <p>{{One-paragraph recap.}}</p>
+  <div class="table-wrap">
+  <table class="glossary">
+    <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>{{Term}}</td><td>{{Definition}}</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 13. Nav -->
+  <nav class="day-nav">
+    <a href="day{{PREV}}.html">← Day {{PREV}}</a>
+    <a href="../">Home</a>
+    <a href="day{{NEXT}}.html">Day {{NEXT}} →</a>
+  </nav>
+</main>
+
+<footer>
+  Backend From First Principles in C/C++ · <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">source on GitHub</a>
+</footer>
+</body>
+</html>

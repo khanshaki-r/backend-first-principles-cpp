@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backend From First Principles in C/C++</title>
+<meta name="description" content="A 30-day concept-first backend engineering course, every idea explained from the OS up and illustrated in C and modern C++.">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="./">Backend From First Principles · C/C++</a>
+    <nav>
+      <a href="#syllabus">Syllabus</a>
+      <a href="#how">How to read</a>
+      <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">GitHub</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle theme">Theme</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>Backend engineering, from the OS up</h1>
+  <p class="lead">
+    A 30-day course that re-teaches Sriniously's
+    <a href="https://www.youtube.com/playlist?list=PLui3EUkuMTPgZcV0QhQrOcwMPcBCcd_Q1">"Backend from first principles"</a>
+    series with every concept explained in depth and illustrated in C and modern C++.
+    Live site: <a href="https://khanshaki-r.github.io/backend-first-principles-cpp/">khanshaki-r.github.io/backend-first-principles-cpp</a>
+  </p>
+
+  <p class="progress-label">0 / 30 days complete</p>
+  <div class="progress-bar"><div></div></div>
+
+  <h2 id="how">How every day is structured</h2>
+  <p>Concepts first, tooling last. Each day answers the same five questions, in order:</p>
+  <ol>
+    <li><strong>WHY</strong> does this exist? What problem was there before it?</li>
+    <li><strong>WHEN</strong> do you need it, and when do you <em>not</em>?</li>
+    <li><strong>HOW</strong> does it work, from the lowest layer that matters (kernel, TCP, bytes, memory) upward?</li>
+    <li><strong>USE CASES</strong>: concrete situations, and how real tools (Nginx, Postgres, Redis, …) do it internally.</li>
+    <li><strong>WHAT IF</strong> it's missing, done wrong, or the usual tool is not available? Failures, fallbacks, trade-offs.</li>
+  </ol>
+  <p>Every day also has a small, complete C program and a modern C++ version of the same idea, plus
+    gotchas, "what would happen if…" exercises, a quiz and a glossary. Copy the code into your own
+    IDE and run it; the pages never require any setup.</p>
+
+  <h2 id="syllabus">Syllabus</h2>
+  <div class="table-wrap">
+  <table class="syllabus">
+    <thead>
+      <tr><th>Day</th><th>Video</th><th>Topic</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>1, 2</td><td>Roadmap and the mindset of a backend engineer. What "first principles" means. How a request travels: browser → DNS → TCP → your process → response.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>2</td><td>3, 4</td><td>What a backend <em>is</em>: client, network, process, OS. A server is a process blocked in <code>accept()</code>. Minimal TCP server in C, RAII sockets in C++. What if there is no backend at all?</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>3</td><td>5</td><td>HTTP from the wire up: request/response format, methods, status codes, headers, keep-alive, chunked encoding, HTTP/1.1 vs 2 vs 3. Hand-written parsers in C and C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>4</td><td>6</td><td>Routing: how a request finds its handler. Path matching, params, trie/radix routers, method dispatch. Function-pointer table in C, trie router in C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>5</td><td>7</td><td>Serialization &amp; deserialization: text vs binary, JSON, Protobuf/MessagePack ideas, endianness, zero-copy, schema evolution.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>6</td><td>8</td><td>Authentication &amp; authorization: sessions, cookies, JWT, HMAC/SHA-256, password hashing, RBAC vs ABAC. HMAC-signed tokens with OpenSSL.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>7</td><td>9</td><td>Validation &amp; transformation: trust boundaries, schema validation, sanitization, DTOs, canonical forms. Declarative validator in C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>8</td><td>10</td><td>Controllers, services, repositories, middlewares, request context: layered architecture, middleware chains as function composition.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>9</td><td>11</td><td>Complete REST API design: resources, verbs, status codes, pagination, filtering, versioning, idempotency, HATEOAS.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>10</td><td>12</td><td>Databases with Postgres: wire protocol, connections, prepared statements, transactions, isolation levels, indexes, N+1. libpq in C, RAII wrapper in C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>11</td><td>13</td><td>Caching: memory hierarchy, LRU/LFU, TTL, cache-aside vs write-through, invalidation, stampedes, Redis protocol (RESP).</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>12</td><td>14</td><td>Task queues &amp; background jobs: producer/consumer, worker pools, retries, dead-letter, delivery guarantees. Thread-safe queue in C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>13</td><td>15</td><td>Full-text search: inverted indexes, tokenization, stemming, TF-IDF, BM25. Inverted index in C++. How Elasticsearch/Lucene does it.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>14</td><td>16</td><td>Error handling &amp; fault tolerance: errno, return codes vs exceptions, <code>std::expected</code>, retries with backoff, timeouts, circuit breakers, bulkheads.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>15</td><td>17</td><td>Production configuration management: env vars, config files, secrets, layering, validation at startup, hot reload.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>16</td><td>18</td><td>Logging, monitoring, observability: structured logs, async logging, metrics, Prometheus format, tracing, correlation IDs.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>17</td><td>19</td><td>Graceful shutdown: signals, draining connections, in-flight requests, timeouts, resource cleanup. Signal-safe C, RAII shutdown in C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>18</td><td>20</td><td>Backend security: TLS handshake walkthrough, injection, XSS/CSRF, rate limiting, secrets, hashing, OWASP top 10, memory safety in C/C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>19</td><td>21.1</td><td>Scaling &amp; performance part 1: latency vs throughput, profiling, benchmarking, blocking vs non-blocking IO, <code>epoll</code>, event loops, reactor pattern.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>20</td><td>21.2</td><td>Scaling &amp; performance part 2: vertical vs horizontal, load balancing, stateless design, sticky sessions, connection pooling, zero-copy, memory pools.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>21</td><td>22</td><td>Concurrency &amp; parallelism: IO-bound vs CPU-bound, processes vs threads vs async, atomics, data races, thread pools, epoll + thread pool reactor.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>22</td><td>23</td><td>Object storage part 1: blobs vs files vs DB, S3 model, buckets/keys, multipart upload, content addressing, durability.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>23</td><td>24</td><td>Object storage part 2: presigned URLs, streaming large files, checksums, CDN, lifecycle rules, S3 API from C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>24</td><td>25</td><td>Real-time backends: polling vs long polling vs SSE vs WebSockets (handshake + framing by hand), pub/sub fan-out, backpressure.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>25</td><td>26</td><td>Testing: unit/integration/e2e, mocks and fakes, TDD, coverage, GoogleTest/Catch2, testing sockets and DB code.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>26</td><td>27</td><td>The Twelve-Factor App: each factor, why it exists, what breaks without it, how it applies to a C++ service.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>27</td><td>28</td><td>OpenAPI: contract-first design, writing a spec, validating requests against it, generating clients/servers.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>28</td><td>29</td><td>Webhooks: server-to-client callbacks, signing payloads (HMAC), retries, idempotency keys, receiver in C++.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>29</td><td>30</td><td>DevOps for backend engineers: Docker multi-stage builds for C++, CI, deploying, health checks, reverse proxies, zero-downtime deploys.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+      <tr><td>30</td><td>—</td><td>Capstone: how all the pieces fit into one production-style C++ backend, request lifecycle end to end. Recap and what next.</td><td><span class="status" data-status="todo">not started</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note">
+    <p><strong>Attribution.</strong> The lesson order and the ideas follow Sriniously's series.
+    The explanations, diagrams and all C/C++ code on this site are original teaching material
+    written for this course.</p>
+  </div>
+</main>
+
+<footer>
+  Backend From First Principles in C/C++ · built day by day · <a href="https://github.com/khanshaki-r/backend-first-principles-cpp">source on GitHub</a>
+</footer>
+</body>
+</html>
